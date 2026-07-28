@@ -1,40 +1,30 @@
+# 🔥 强制单架构 amd64（解决 Back4app 免费计划的 TARGETARCH 问题）
+ENV DOCKER_DEFAULT_PLATFORM=linux/amd64
+
 # Keep the Docker base on Node 22 because the official Node 24/25 slim images
 # no longer publish linux/arm/v7 manifests, which breaks our armv7 Docker jobs.
-ENV DOCKER_DEFAULT_PLATFORM=linux/amd64
 FROM node:22-bookworm-slim AS builder
-
 WORKDIR /app
-
 RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
-
 ENV PYTHON=/usr/bin/python3
-
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts --no-audit --no-fund
 RUN npm rebuild esbuild sharp better-sqlite3 --no-audit --no-fund
-
 COPY . .
 RUN npm run build:web && npm run build:server
 RUN npm prune --omit=dev --no-audit --no-fund
 
 FROM node:22-bookworm-slim
-
 WORKDIR /app
+# ARG TARGETARCH 和 ARG TARGETVARIANT 已删除（已通过 ENV DOCKER_DEFAULT_PLATFORM 强制 amd64）
+# ARG KUBECTL_VERSION=v1.31.8
+# ARG HELM_VERSION=v3.18.6
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl tar gzip \
-  && case "$TARGETARCH" in \
-    amd64|arm64) export ARCH="$TARGETARCH" ;; \
-    arm) \
-      if [ "${TARGETVARIANT:-}" = "v7" ]; then \
-        export ARCH="arm"; \
-      else \
-        echo "Unsupported TARGETARCH/TARGETVARIANT: $TARGETARCH/${TARGETVARIANT:-}" >&2; exit 1; \
-      fi ;; \
-    *) echo "Unsupported TARGETARCH/TARGETVARIANT: $TARGETARCH/${TARGETVARIANT:-}" >&2; exit 1 ;; \
-  esac \
+  && export ARCH="amd64" \
   && curl -fsSL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl" \
   && chmod +x /usr/local/bin/kubectl \
   && curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-${ARCH}.tar.gz" -o /tmp/helm.tgz \
@@ -47,12 +37,8 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/drizzle ./drizzle
-
 RUN mkdir -p /app/data
-
 EXPOSE 4000
-
 ENV NODE_ENV=production
 ENV DATA_DIR=/app/data
-
 CMD ["sh", "-c", "node dist/server/db/migrate.js && node dist/server/index.js"]
