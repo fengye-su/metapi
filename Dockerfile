@@ -24,7 +24,7 @@ ARG HELM_VERSION=v3.18.6
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl tar gzip \
-  && export ARCH="amd64";
+  && export ARCH="amd64" \
   && curl -fsSL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl" \
   && chmod +x /usr/local/bin/kubectl \
   && curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-${ARCH}.tar.gz" -o /tmp/helm.tgz \
