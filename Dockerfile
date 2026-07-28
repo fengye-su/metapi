@@ -1,7 +1,7 @@
 # Keep the Docker base on Node 22 because the official Node 24/25 slim images
 # no longer publish linux/arm/v7 manifests, which breaks our armv7 Docker jobs.
-ENV DOCKER_DEFAULT_PLATFORM=linux/amd64
 FROM node:22-bookworm-slim
+ENV DOCKER_DEFAULT_PLATFORM=linux/amd64
 
 WORKDIR /app
 
