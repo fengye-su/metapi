@@ -1,6 +1,6 @@
 # Keep the Docker base on Node 22 because the official Node 24/25 slim images
 # no longer publish linux/arm/v7 manifests, which breaks our armv7 Docker jobs.
-FROM node:22-bookworm-slim
+FROM node:22-bookworm-slim AS builder
 ENV DOCKER_DEFAULT_PLATFORM=linux/amd64
 
 WORKDIR /app
@@ -19,12 +19,16 @@ COPY . .
 RUN npm run build:web && npm run build:server
 RUN npm prune --omit=dev --no-audit --no-fund
 
+FROM node:22-bookworm-slim
+
+WORKDIR /app
+
 ARG KUBECTL_VERSION=v1.31.8
 ARG HELM_VERSION=v3.18.6
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl tar gzip \
-  && export ARCH="amd64" \
+  && export ARCH="amd64"; \
   && curl -fsSL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl" \
   && chmod +x /usr/local/bin/kubectl \
   && curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-${ARCH}.tar.gz" -o /tmp/helm.tgz \
@@ -33,10 +37,10 @@ RUN apt-get update \
   && chmod +x /usr/local/bin/helm \
   && rm -rf /tmp/helm.tgz "/tmp/linux-${ARCH}" /var/lib/apt/lists/*
 
-COPY dist ./dist
-COPY node_modules ./node_modules
-COPY package.json ./
-COPY drizzle ./drizzle
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/drizzle ./drizzle
 
 RUN mkdir -p /app/data
 
