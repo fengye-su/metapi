@@ -1,5 +1,6 @@
 # Keep the Docker base on Node 22 because the official Node 24/25 slim images
 # no longer publish linux/arm/v7 manifests, which breaks our armv7 Docker jobs.
+ENV DOCKER_DEFAULT_PLATFORM=linux/amd64
 FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
@@ -21,11 +22,6 @@ RUN npm prune --omit=dev --no-audit --no-fund
 FROM node:22-bookworm-slim
 
 WORKDIR /app
-
-ARG TARGETARCH
-ARG TARGETVARIANT
-ARG KUBECTL_VERSION=v1.31.8
-ARG HELM_VERSION=v3.18.6
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl tar gzip \
